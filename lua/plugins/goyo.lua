@@ -45,7 +45,7 @@ return {
       vim.g.limelight_conceal_guifg = "DarkGray"
       vim.g.limelight_conceal_guifg = "#777777"
       vim.g.limelight_default_coefficient = 0.7
-      vim.g.limelight_paragraph_span = 1
+      vim.g.limelight_paragraph_span = 5
       vim.g.limelight_bop = "^\\s"
       vim.g.limelight_eop = "\\ze\\n^\\s"
       vim.g.limelight_priority = -1
