@@ -26,6 +26,7 @@ return {
               theme = "auto",
               globalstatus = vim.o.laststatus == 3,
               disabled_filetypes = { statusline = { "dashboard", "alpha", "ministarter", "snacks_dashboard" } },
+              position = "bottom", -- 固定到底部
             },
             sections = {
               lualine_a = { "mode" },
