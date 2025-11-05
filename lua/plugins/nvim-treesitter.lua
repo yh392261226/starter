@@ -8,20 +8,22 @@ return {
       LazyVim.error("Please restart Neovim and run `:TSUpdate` to use the `nvim-treesitter` **main** branch.")
       return
     end
-    LazyVim.treesitter.ensure_treesitter_cli(function()
+    -- make sure we're using the latest treesitter util
+    package.loaded["lazyvim.util.treesitter"] = nil
+    LazyVim.treesitter.build(function()
       TS.update(nil, { summary = true })
     end)
   end,
-  lazy = vim.fn.argc(-1) == 0, -- load treesitter early when opening a file from the cmdline
   event = { "LazyFile", "VeryLazy" },
   cmd = { "TSUpdate", "TSInstall", "TSLog", "TSUninstall" },
   opts_extend = { "ensure_installed" },
+  ---@alias lazyvim.TSFeat { enable?: boolean, disable?: string[] }
   ---@class lazyvim.TSConfig: TSConfig
   opts = {
     -- LazyVim config for treesitter
-    indent = { enable = true },
-    highlight = { enable = true },
-    folds = { enable = true },
+    indent = { enable = true }, ---@type lazyvim.TSFeat
+    highlight = { enable = true }, ---@type lazyvim.TSFeat
+    folds = { enable = true }, ---@type lazyvim.TSFeat
     ensure_installed = {
       "bash",
       "c",
@@ -84,7 +86,7 @@ return {
       return not LazyVim.treesitter.have(lang)
     end, opts.ensure_installed or {})
     if #install > 0 then
-      LazyVim.treesitter.ensure_treesitter_cli(function()
+      LazyVim.treesitter.build(function()
         TS.install(install, { summary = true }):await(function()
           LazyVim.treesitter.get_installed(true) -- refresh the installed langs
         end)
@@ -94,22 +96,32 @@ return {
     vim.api.nvim_create_autocmd("FileType", {
       group = vim.api.nvim_create_augroup("lazyvim_treesitter", { clear = true }),
       callback = function(ev)
-        if not LazyVim.treesitter.have(ev.match) then
+        local ft, lang = ev.match, vim.treesitter.language.get_lang(ev.match)
+        if not LazyVim.treesitter.have(ft) then
           return
         end
 
+        ---@param feat string
+        ---@param query string
+        local function enabled(feat, query)
+          local f = opts[feat] or {} ---@type lazyvim.TSFeat
+          return f.enable ~= false
+            and not (type(f.disable) == "table" and vim.tbl_contains(f.disable, lang))
+            and LazyVim.treesitter.have(ft, query)
+        end
+
         -- highlighting
-        if vim.tbl_get(opts, "highlight", "enable") ~= false then
-          pcall(vim.treesitter.start)
+        if enabled("highlight", "highlights") then
+          pcall(vim.treesitter.start, ev.buf)
         end
 
         -- indents
-        if vim.tbl_get(opts, "indent", "enable") ~= false and LazyVim.treesitter.have(ev.match, "indents") then
+        if enabled("indent", "indents") then
           LazyVim.set_default("indentexpr", "v:lua.LazyVim.treesitter.indentexpr()")
         end
 
         -- folds
-        if vim.tbl_get(opts, "folds", "enable") ~= false and LazyVim.treesitter.have(ev.match, "folds") then
+        if enabled("folds", "folds") then
           if LazyVim.set_default("foldmethod", "expr") then
             LazyVim.set_default("foldexpr", "v:lua.LazyVim.treesitter.foldexpr()")
           end
